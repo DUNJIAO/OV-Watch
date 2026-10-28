@@ -4,3 +4,14 @@
 # 忽略所有位置的 .vscode 目录
 **/.vscode/
 
+# 学习工程的编译产物
+study_workstation/ovwatch_learn/build/
+study_workstation/ovwatch_learn/bin/
+
+# 本地第三方库：SDL2 开发包（77M，本地保留）
+study_workstation/tools/SDL2-2.30.9/
+study_workstation/tools/SDL2-devel-*.tar.gz
+
+# 参考资料（数据手册，体积大，本地保留）
+study_workstation/pdf/
+

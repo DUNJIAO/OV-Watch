@@ -1,0 +1,2 @@
+# 脚本在 Git Bash 里必须保持 LF，否则 shebang 会失效（bad interpreter）
+*.sh text eol=lf

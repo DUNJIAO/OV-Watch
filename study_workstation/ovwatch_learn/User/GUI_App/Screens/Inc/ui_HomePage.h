@@ -45,6 +45,9 @@ extern lv_obj_t *ui_HRArc;
 extern lv_obj_t *ui_HRiconLabel;
 extern lv_obj_t *ui_HRNumLabel;
 
+/* 2.1 课：把这一页交给页面栈管理（三个成员就是 init / deinit / 屏幕指针） */
+extern Page_t Page_Home;
+
 void ui_HomePage_screen_init(void);
 void ui_HomePage_screen_deinit(void);
 

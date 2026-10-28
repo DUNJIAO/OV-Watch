@@ -9,6 +9,12 @@ extern "C" {
 #include <stdio.h>
 
 /*
+ * 2.1 课：所有页面都要用 Page_t，所以从 ui.h 里统一带出来。
+ * （PageManager.h 自己也会 include 本文件，靠头文件保护符不会循环展开。）
+ */
+#include "../Func/Inc/PageManager.h"
+
+/*
  * 自定义字体（由 SquareLine Studio 生成）
  * 源文件在参考工程 user_test/GUI_App/Fonts/ 下，Makefile 会一起编译。
  */

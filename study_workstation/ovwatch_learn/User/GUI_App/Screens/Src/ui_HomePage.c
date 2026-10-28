@@ -8,10 +8,12 @@
  * 1.2 课：加 lv_timer，用假时钟驱动刷新
  * 1.3 课：数据全部改成从 HWInterface 读，假时钟换成真实 RTC
  * 1.4 课：下拉面板 + 事件绑定（第一次"写"抽象层：改背光、开关蓝牙、关机）
+ * 2.1 课：交给页面栈管理，右滑真正跳到菜单页（Page_Load）
  */
 #include <stdio.h>   /* 1.4 课用 printf 在控制台打印事件，方便确认真的触发了 */
 
 #include "../Inc/ui_HomePage.h"
+#include "../Inc/ui_MenuPage.h"     /* 2.1 课：右滑要跳到菜单页 */
 #include "../../../Func/Inc/HWDataAccess.h"   /* 和参考实现同一个相对层级 */
 
 /* ==================== 控件指针 ==================== */
@@ -100,6 +102,15 @@ uint16_t ui_StepNumValue      = 0;
 int8_t   ui_HomePageTempValue = 25;
 int8_t   ui_HomePageHumiValue = 67;
 int16_t  ui_HomePageHRValue   = 72;
+
+/* ==================== 交给页面栈（2.1 课） ==================== */
+
+/*
+ * 这一行就是"主页"这个概念的全部：
+ *   谁负责建（init）、谁负责拆（deinit）、建出来的屏幕放在哪（&ui_HomePage）。
+ * 页面栈不认识"主页"，它只认识这个结构体。
+ */
+Page_t Page_Home = {ui_HomePage_screen_init, ui_HomePage_screen_deinit, &ui_HomePage};
 
 /*
  * 图标字体的字形是私用区字符，直接用 UTF-8 十六进制写出来，
@@ -232,14 +243,14 @@ static void HomePage_timer_cb(lv_timer_t *timer)
  * 只关心一种事件时也可以只写那一种（比如 LV_EVENT_CLICKED）。
  */
 
-/* 屏幕级事件：主页收到的是手势（往右滑）。参考实现在这里 Page_Load(&Page_Menu) */
+/* 屏幕级事件：主页收到的是手势（往右滑）→ 打开菜单页 */
 static void ui_event_HomePage(lv_event_t *e)
 {
     if (lv_event_get_code(e) != LV_EVENT_GESTURE) {
         return;
     }
     if (lv_indev_get_gesture_dir(lv_indev_get_act()) == LV_DIR_RIGHT) {
-        printf("[1.4] 收到右滑手势（参考实现跳菜单页，等 2.1 课有 PageManager 再接）\n");
+        Page_Load(&Page_Menu);
     }
 }
 

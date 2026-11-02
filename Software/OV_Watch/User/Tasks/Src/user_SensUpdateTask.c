@@ -74,7 +74,7 @@ void MPUCheckTask(void *argument)
 }
 
 /**
-  * @brief  HR data renew task
+  * @brief  HR data renew task. HR数据更新任务 
   * @param  argument: Not used
   * @retval None
   */
@@ -85,25 +85,26 @@ void HRDataUpdateTask(void *argument)
 	uint8_t hr_temp=0;
 	while(1)
 	{
-		if(Page_Get_NowPage()->page_obj == &ui_HRPage)
+		if(Page_Get_NowPage()->page_obj == &ui_HRPage)  //在心率页就采集数据 ，不在就不采集，省电
 		{
 			osMessageQueuePut(IdleBreak_MessageQueue, &IdleBreakstr, 0, 1);
-			//sensor wake up
+			//sensor wake up  唤醒传感器
 			EM7028_hrs_Enable();
-			//receive the sensor wakeup message, sensor wakeup
+			//receive the sensor wakeup message, sensor wakeup 
 			if(!HWInterface.HR_meter.ConnectionError)
 			{
 				//Hr messure
-				vTaskSuspendAll();
+				vTaskSuspendAll();  //暂停所有任务  （用了全局队列）
 				hr_temp = HR_Calculate(EM7028_Get_HRS1(),user_HR_timecount);
-				xTaskResumeAll();
+				xTaskResumeAll(); //恢复所有任务
+				//判断，超出范围直接丢弃
 				if(HWInterface.HR_meter.HrRate != hr_temp && hr_temp>50 && hr_temp<120)
 				{
 					HWInterface.HR_meter.HrRate = hr_temp;
 				}
 			}
 		}
-		osDelay(50);
+		osDelay(50);   //睡眠50ms
 	}
 }
 

@@ -207,14 +207,14 @@ void TaskTickHook(void)
 	//to increase the timerpage's timer(put in here is to ensure the Real Time)
 	if(ui_TimerPageFlag)
 	{
-    IdleTimerCount = 0;
+    IdleTimerCount = 0; //闲置时间
     ui_TimerPage_elapsed_ms += 1;
 	}
   else
   {
-    IdleTimerCount += 1;
+    IdleTimerCount += 1;  //没在计时，闲置计数+1，用于熄屏
   }
-	user_HR_timecount+=1;
+	user_HR_timecount+=1;  //给心率算法当毫秒时钟
 }
 
 

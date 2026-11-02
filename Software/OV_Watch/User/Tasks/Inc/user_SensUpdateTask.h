@@ -7,6 +7,7 @@ extern "C" {
 
 extern uint32_t user_HR_timecount;
 
+//
 void SensorDataUpdateTask(void *argument);
 void HRDataUpdateTask(void *argument);
 void MPUCheckTask(void *argument);

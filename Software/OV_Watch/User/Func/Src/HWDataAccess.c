@@ -537,7 +537,7 @@ HW_InterfaceTypeDef HWInterface = {
 	},
 	.HR_meter = {
 		.ConnectionError = 1,
-		.HrRate = 0,
+		.HrRate = 0,  //是字段不是函数，算一次要 50 ms 一轮，界面不需要每帧都去问，直接读上一次的结果就行
 		.SPO2 = 99,
 		.Init = HW_HRmeter_Init,
 		.Sleep = HW_HRmeter_Sleep

@@ -39,6 +39,7 @@
 #define HRS1_DATA3_L		0x2E
 #define HRS1_DATA3_H		0x2F
 
+//读一个寄存器
 uint8_t  EM7028_ReadOneReg(unsigned char RegAddr);
 void  EM7028_WriteOneReg(unsigned char RegAddr, unsigned char dat);
 
@@ -46,6 +47,11 @@ uint8_t EM7028_Get_ID(void);
 uint8_t EM7028_hrs_init(void);
 uint8_t EM7028_hrs_Enable(void);
 uint8_t EM7028_hrs_DisEnable(void);
+
+/*
+* @brife :获取HRS1传感器原始值
+* 返回值: HRS1传感器原始值
+*/
 uint16_t EM7028_Get_HRS1(void);
 
 #endif

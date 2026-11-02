@@ -28,6 +28,7 @@ void ScrRenewTask(void *argument)
 	uint8_t keystr=0;
 	while(1)
 	{
+		//osMessageQueueGet（要取的队列，存储位置，超时时间ms,等待时间ms）
 		if(osMessageQueueGet(Key_MessageQueue,&keystr,NULL,0)==osOK)
 		{
 			//key1 pressed

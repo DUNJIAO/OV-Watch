@@ -9,9 +9,11 @@ iic_bus_t EM7028_bus =
 	.IIC_SCL_PIN  = GPIO_PIN_14,
 };
 
+//读一个寄存器
 uint8_t  EM7028_ReadOneReg(unsigned char RegAddr)
 {
 	unsigned char dat;
+	//通过IIC读取一个寄存器的值
 	dat = IIC_Read_One_Byte(&EM7028_bus, EM7028_ADDR, RegAddr);
 	return dat;
 }
@@ -83,6 +85,7 @@ uint8_t EM7028_hrs_DisEnable()
 	return 0;
 }
 
+//获取HRS1传感器原始值
 uint16_t EM7028_Get_HRS1(void)
 {
 	uint16_t dat;

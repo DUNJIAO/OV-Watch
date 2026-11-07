@@ -61,6 +61,64 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/*
+ * ============================================================================
+ * 一、启动流程总览（本文件只负责把系统跑起来，不管业务）
+ *   1. SCB->VTOR = 0x0000C000   把中断向量表搬到 0xC000（工程带 Bootloader）
+ *   2. HAL_Init()               初始化 HAL：NVIC 分组、1 ms 时基、Flash 预取
+ *   3. SystemClock_Config()     HSI 16 MHz -> PLL -> SYSCLK 100 MHz
+ *   4. __enable_irq()           打开全局中断
+ *   5. MX_xxx_Init()            逐个外设初始化，函数体在各自的 .c 里
+ *   6. osKernelInitialize()     初始化 FreeRTOS 内核（还没开始调度）
+ *   7. MX_FREERTOS_Init()       里面调用 User_Tasks_Init()，建队列和任务
+ *   8. osKernelStart()          开始调度，此函数【永不返回】
+ *
+ *   第 6、7、8 步顺序不能换：先 Start 的话，后面的建任务代码根本执行不到。
+ *
+ * ============================================================================
+ * 二、main()  --  The application entry point.
+ *   从复位到进入调度器，全程只执行一次；osKernelStart 之后由任务接管，
+ *   函数末尾那个 while(1) 是死代码，永远不会执行。
+ *
+ *   HAL_Init() 内部其实只做三件事：
+ *     HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4)  4 位全部给抢占优先级
+ *     HAL_InitTick()                                      1 ms 时基
+ *     HAL_MspInit()                                       Flash 预取、电源配置
+ *   优先级分组必须在这里定下来，后面所有 HAL_NVIC_SetPriority() 的第二个参数
+ *   都是"抢占优先级"，范围 0~15。工程里出现的 5、0 就是这个含义。
+ *
+ * ============================================================================
+ * 三、SystemClock_Config()  --  System Clock Configuration
+ *   时钟树：HSI 16 MHz / PLLM 8 = 2 MHz
+ *                 * PLLN 100  = 200 MHz
+ *                 / PLLP 2    = 100 MHz  <- SYSCLK
+ *   AHB 不分频 = 100 MHz，APB1 二分频 = 50 MHz，APB2 不分频 = 100 MHz
+ *   Flash 等待周期 FLASH_LATENCY_3，100 MHz 下必须给 3 个等待周期
+ *   同时打开 LSE（32.768 kHz），给 RTC 用
+ *
+ *   注意：进 STOP 模式会把时钟切回内部 HSI 16 MHz，
+ *   所以 user_RunModeTasks.c 里醒来后必须再调一次本函数，否则按 16 MHz 跑。
+ *
+ * ============================================================================
+ * 四、HAL_TIM_PeriodElapsedCallback()  --  TIM1 周期中断回调
+ *   本工程把 HAL 的时基从 SysTick 换成了 TIM1，因为 SysTick 已经被 FreeRTOS 占用。
+ *   这里每进一次中断就把 uwTick 加 1，HAL_Delay 和 HAL_GetTick 才有时间可读。
+ *   配置代码在 stm32f4xx_hal_timebase_tim.c。
+ *   结果是两套时基并存：HAL_Delay() 走 TIM1，osDelay() 走 SysTick，别混用。
+ *
+ * ============================================================================
+ * 五、Error_Handler()  --  初始化失败时进入
+ *   一旦进来就先关全局中断再死循环，现场停在 while(1) 里；
+ *   用调试器暂停就能看到调用栈，据此判断是哪个初始化失败。
+ *   本工程里 HAL_RCC_OscConfig、HAL_RCC_ClockConfig、HAL_RTCEx_SetWakeUpTimer_IT
+ *   失败都会走到这里。
+ *
+ * ============================================================================
+ * 六、关于重新生成
+ *   本文件由 CubeMX 生成。只有 USER CODE BEGIN/END 之间的内容会被保存，
+ *   其余位置（包括函数上方的 @brief 注释）重新生成时会被覆盖。
+ *   所以上面这五段说明全部集中放在本区块内，保证不会丢。
+ */
 
 /* USER CODE END 0 */
 

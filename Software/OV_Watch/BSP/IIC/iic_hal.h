@@ -3,6 +3,9 @@
 
 #include "stm32f4xx_hal.h"
 
+//所有 IIC 函数的第一个参数都是 iic_bus_t *bus，
+//这样同一套代码可以服务多个设备：
+//每个传感器在初始化时填入自己的端口和引脚，后面所有函数都通过这个指针读取。
 typedef struct
 {
 	GPIO_TypeDef * IIC_SDA_PORT;

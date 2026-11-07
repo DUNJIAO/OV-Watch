@@ -33,6 +33,13 @@ uint32_t IdleTimerCount = 0;
 	* @brief  Enter Idle state
 	* @param  argument: Not used
 	* @retval None
+	* @note   每 10 ms 跑一轮，管"变暗 -> 熄屏"这一整条时间链：
+	*           收到 Idle_MessageQueue   -> 背光调到 5（只变暗，不关屏）
+	*           收到 IdleBreak_MessageQueue -> 恢复用户设定的亮度，闲置计时清零
+	*           IdleTimerCount >= ui_LTimeValue*1000 -> 自己给自己发 Idle 信号
+	*           IdleTimerCount >= ui_TTimeValue*1000 -> 给 StopEnterTask 发 Stop 信号
+	*         light_off_sent 是防重复标记：变暗后就不再反复发 Idle 信号
+	*         IdleTimerCount 由 SysTick 钩子 TaskTickHook 每 1 ms 加 1
 	*/
 void IdleEnterTask(void *argument)
 {
@@ -77,6 +84,12 @@ void IdleEnterTask(void *argument)
   * @brief  enter the stop mode and resume
   * @param  argument: Not used
   * @retval None
+  * @note   分工：IdleEnterTask 负责"判断该睡了"，本任务负责"真正睡下去、再醒过来"
+  *         睡前三件事：关外设（UART/LCD/触摸）、挂起调度器、关看门狗和 SysTick 中断
+  *         醒来后必须重做三件事：恢复 SysTick、SystemClock_Config（STOP 会把时钟切回
+  *         内部 16 MHz HSI，不配置就按 16 MHz 跑）、喂狗
+  *         sleep 标签 + goto 是核心：醒来若没按键、没充电、没抬腕，直接 goto 回去再睡
+  *         队列用 timeout=0 取，靠末尾 osDelay(100) 轮询，所以响应最慢约 100 ms
   */
 void StopEnterTask(void *argument)
 {

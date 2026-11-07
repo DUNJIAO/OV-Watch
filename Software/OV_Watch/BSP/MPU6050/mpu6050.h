@@ -87,33 +87,174 @@
 //#define MPU_READ    0XD1
 //#define MPU_WRITE   0XD0
 
+/**
+  * @brief  配置中断脚 PB12（下降沿触发）并使能 EXTI15_10 中断
+  * @retval None
+  */
+
 void MPU_INT_Pin_Init(void);
+/**
+  * @brief  打开 MPU6050 的运动检测中断
+  * @retval None
+  */
+
 void MPU_Motion_Init(void);
+/**
+  * @brief  初始化 MPU6050 所在的软件 I2C 总线（PB13/PB14）
+  * @retval None
+  */
+
 void MPU_Bus_Init(void);
+/**
+  * @brief  初始化 MPU6050 并打开运动中断
+  * @retval 0：成功；1：读不到器件 ID
+  */
+
 u8 MPU_Init(void); 															//初始化MPU6050
 
+/**
+  * @brief  I2C 连续写若干个字节
+  * @param  addr 7 位器件地址
+  * @param  reg  起始寄存器
+  * @param  len  字节数
+  * @param  buf  数据缓冲区
+  * @retval 0：成功；1：器件无应答
+  */
+
 u8 MPU_Write_Len(u8 addr,u8 reg,u8 len,u8 *buf);//IIC连续写
+/**
+  * @brief  I2C 连续读若干个字节
+  * @param  addr 7 位器件地址
+  * @param  reg  起始寄存器
+  * @param  len  字节数
+  * @param  buf  接收缓冲区
+  * @retval 0：成功；1：器件无应答
+  */
+
 u8 MPU_Read_Len(u8 addr,u8 reg,u8 len,u8 *buf); //IIC连续读 
+/**
+  * @brief  I2C 写单个寄存器
+  * @param  reg  寄存器地址
+  * @param  data 要写的值
+  * @retval 0：成功；1：器件无应答
+  */
+
 u8 MPU_Write_Byte(u8 reg,u8 data);							//IIC写一个字节
+/**
+  * @brief  I2C 读单个寄存器
+  * @param  reg 寄存器地址
+  * @retval 读到的寄存器值
+  */
+
 u8 MPU_Read_Byte(u8 reg);												//IIC读一个字节
 
+/**
+  * @brief  设置陀螺仪满量程
+  * @param  fsr 0:+250dps 1:+500dps 2:+1000dps 3:+2000dps
+  * @retval 0：成功；1：失败
+  */
+
 u8 MPU_Set_Gyro_Fsr(u8 fsr);
+/**
+  * @brief  设置加速度计满量程
+  * @param  fsr 0:+2g 1:+4g 2:+8g 3:+16g
+  * @retval 0：成功；1：失败
+  */
+
 u8 MPU_Set_Accel_Fsr(u8 fsr);
+/**
+  * @brief  设置数字低通滤波带宽
+  * @param  lpf 期望带宽，单位 Hz
+  * @retval 0：成功；1：失败
+  */
+
 u8 MPU_Set_LPF(u16 lpf);
+/**
+  * @brief  设置采样率
+  * @param  rate 4~1000 Hz
+  * @retval 0：成功；1：失败
+  */
+
 u8 MPU_Set_Rate(u16 rate);
+/**
+  * @brief  设置 FIFO（本工程没有实现，工程里搜不到定义）
+  * @param  sens 传感器选择位
+  * @retval 0：成功；1：失败
+  */
+
 u8 MPU_Set_Fifo(u8 sens);
 
+/**
+  * @brief  基于 iic_hal 的连续读封装
+  * @param  addr   起始寄存器
+  * @param  length 字节数
+  * @param  buff   接收缓冲区
+  * @retval 0：成功；1：失败
+  */
+
 uint8_t MPU_Read_Multi_Byte(uint8_t addr, uint8_t length, uint8_t buff[]);
+/**
+  * @brief  基于 iic_hal 的连续写封装
+  * @param  addr   起始寄存器
+  * @param  length 字节数
+  * @param  buff   数据缓冲区
+  * @retval 0：成功；1：失败
+  */
+
 uint8_t MPU_Write_Multi_Byte(uint8_t addr,uint8_t length,uint8_t buff[]);
 
+/**
+  * @brief  让 MPU6050 进入睡眠
+  * @retval None
+  */
+
 void MPU_Sleep(void);
+/**
+  * @brief  唤醒 MPU6050
+  * @retval None
+  */
+
 void MPU_Wakeup(void);
+/**
+  * @brief  读中断状态寄存器
+  * @retval 寄存器原值
+  */
+
 uint8_t MPU_Read_Status(void);
 
+/**
+  * @brief  读片上温度
+  * @retval 温度 x100 的整数
+  */
+
 short MPU_Get_Temperature(void);
+/**
+  * @brief  读三轴陀螺仪原始值
+  * @param  gx gy gz 输出缓冲区
+  * @retval 0：成功；1：读失败
+  */
+
 u8 MPU_Get_Gyroscope(short *gx,short *gy,short *gz);
+/**
+  * @brief  读三轴加速度原始值
+  * @param  ax ay az 输出缓冲区
+  * @retval 0：成功；1：读失败
+  */
+
 u8 MPU_Get_Accelerometer(short *ax,short *ay,short *az);
+/**
+  * @brief  由加速度算出 roll 和 pitch
+  * @param  roll  输出，弧度
+  * @param  pitch 输出，弧度
+  * @retval None
+  */
+
 void MPU_Get_Angles(float * roll,float * pitch);
+/**
+  * @brief  判断手表是否水平
+  * @retval 1：水平；0：不水平
+  */
+
 uint8_t MPU_isHorizontal(void);
 
 #endif

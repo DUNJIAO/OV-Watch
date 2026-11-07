@@ -42,12 +42,24 @@
   * @brief  hardwares init task
   * @param  argument: Not used
   * @retval None
+  * @note   整个工程的上电初始化，只跑一遍，干完自己删除：
+  *           1. vTaskSuspendAll() 冻结其余 12 个任务，防止初始化过程中被抢 CPU
+  *           2. RTC 唤醒定时器、UART DMA 接收、背光 PWM
+  *           3. 电源、按键
+  *           4. 5 个传感器，每个最多重试 3 次，结果记进 ConnectionError
+  *           5. EEPROM 校验，恢复手臂唤醒开关、APP 开关、当天步数
+  *           6. 蓝牙、触摸、LCD，显示 Welcome 和版本号（阻塞 1 秒）
+  *           7. LVGL 三件套：lv_init -> lv_port_disp_init -> lv_port_indev_init -> ui_init
+  *           8. xTaskResumeAll() 解冻，vTaskDelete(NULL) 删除自己
+  *         期间大量使用 delay_ms，它是纯 SysTick 忙等（delay.c 里 OS_SUPPORT=0），
+  *         不依赖调度器，所以调度器挂起时照样能用，代价是空转 CPU
+  *         末尾的 osDelay(500) 永远执行不到，因为前面已经把自己删了
   */
 void HardwareInitTask(void *argument)
 {
 	while(1)
 	{
-    vTaskSuspendAll();
+    vTaskSuspendAll();//冻结其他12个任务，防止初始化过程中被抢 CPU
 
     // RTC Wake
     if(HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 2000, RTC_WAKEUPCLOCK_RTCCLK_DIV16) != HAL_OK)

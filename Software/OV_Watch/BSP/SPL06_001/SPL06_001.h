@@ -3,9 +3,15 @@
 
 #include "iic_hal.h"
 
+/*
+ * SPL06_001 气压/温度传感器，I2C 接口，7 位地址 0x76
+ * 与 AHT21 共用 PB13（SDA）/ PB14（SCL），靠器件地址区分
+ * 补偿系数出厂写在 0x10~0x21，由主机读出后参与运算
+ */
+
 //your own settings
 //see the table in the datasheet
-#define KT							524288.0		
+#define KT							524288.0
 #define KP							1572864.0
 
 #define SPL_CHIP_ID					0X10
@@ -61,8 +67,8 @@
 //pressure config(3:0)
 //oversampling rate
 #define	PM_PRC1					0x00		//single
-#define	PM_PRC2					0x01		//2   times (low power) 
-#define	PM_PRC3					0x02		//4   times 
+#define	PM_PRC2					0x01		//2   times (low power)
+#define	PM_PRC3					0x02		//4   times
 #define	PM_PRC4					0x03		//8   times (standard)
 #define	PM_PRC5					0x04		//16  times	(need a bit shift in CFG_CFG)
 #define	PM_PRC6					0x05		//32  times	(need a bit shift in CFG_CFG)
@@ -84,23 +90,70 @@
 //Temperature oversampling(3:0)
 #define	TMP_PRC1				0x00		//single
 #define	TMP_PRC2				0x01		//2   times
-#define	TMP_PRC3				0x02		//4   times 
+#define	TMP_PRC3				0x02		//4   times
 #define	TMP_PRC4				0x03		//8   times
 #define	TMP_PRC5				0x04		//16  times
 #define	TMP_PRC6				0x05		//32  times
 #define	TMP_PRC7				0x06		//64  times
 #define	TMP_PRC8				0x07		//128 times
 
+/**
+  * @brief  读一个寄存器
+  * @param  addr 寄存器地址
+  * @retval 读到的字节
+  */
 uint8_t SPL_ReadOneReg(uint8_t addr);
+
+/**
+  * @brief  写一个寄存器
+  * @param  addr 寄存器地址
+  * @param  dat  要写入的字节
+  * @retval None
+  * @note   底层 IIC_Write_One_Byte 的返回值没有向上传递，写失败无法感知
+  */
 void SPL_WriteOneReg(uint8_t addr, uint8_t dat);
 
+/**
+  * @brief  初始化：开时钟、配置测量参数、读出补偿系数并校验
+  * @retval 0：成功；1：回读校验失败
+  */
 uint8_t SPL_init(void);
+
+/**
+  * @brief  进入待机，停止测量
+  * @retval None
+  */
 void SPL_Sleep(void);
+
+/**
+  * @brief  退出待机，恢复连续温压测量
+  * @retval None
+  */
 void SPL_Wakeup(void);
+
+/**
+  * @brief  读芯片 ID
+  * @retval ID 值，正常应为 0x10
+  */
 uint8_t SPL_GetID(void);
 
+/**
+  * @brief  计算海拔
+  * @retval 海拔，单位 米
+  * @note   公式按海平面气压 101325 Pa 换算
+  */
 float Altitude_Calculate(void);
+
+/**
+  * @brief  计算气压
+  * @retval 气压，单位 Pa
+  */
 float Pressure_Calculate(void);
+
+/**
+  * @brief  计算温度
+  * @retval 温度，单位 摄氏度
+  */
 float Temperature_Calculate(void);
 
 #endif

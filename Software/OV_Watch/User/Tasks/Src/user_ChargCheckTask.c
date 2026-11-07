@@ -21,6 +21,15 @@
   * @brief  charg page enter task
   * @param  argument: Not used
   * @retval None
+  * @note   阻塞在 HardIntEventHandle 的 HARDINT_EVENT_CHARG 上（osWaitForever），
+  *         平时完全不占 CPU，靠充电检测脚的 EXTI 中断置标志来唤醒。
+  *         这是"中断只置标志、任务做实事"的典型写法。
+  *         醒来先往 IdleBreak_MessageQueue 投一条空消息，让 IdleEnterTask 恢复亮度、
+  *         清零闲置计时（插拔充电器算一次用户活动，不能熄屏）。
+  *         随后按 ChargeCheck() 的真实状态切页，两个分支都带"当前页面"判断，互斥：
+  *           在充电 且 不在充电页 -> Page_Load(&Page_Charg)
+  *           不在充电 且 在充电页 -> Page_Back()
+  *         这样即使插拔抖动导致标志重复置位，也不会反复加载同一个页面。
   */
 void ChargPageEnterTask(void *argument)
 {

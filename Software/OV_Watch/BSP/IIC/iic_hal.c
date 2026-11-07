@@ -1,6 +1,8 @@
 #include "iic_hal.h"
 #include "delay.h"
 
+//使用的是软件iic，SDA和SCL的GPIO口需要在外部初始化,时序完全由delay_us控制
+
 /**
   * @brief SDA线输入模式配置
   * @param None
@@ -42,6 +44,8 @@ void SDA_Output(iic_bus_t *bus, uint16_t val)
 {
     if ( val )
     {
+      //不直接用HAL_GPIO_WritePin？
+      //软件 I2C 靠时间卡节拍，HAL 函数多了一层参数检查和函数调用开销。
         bus->IIC_SDA_PORT->BSRR |= bus->IIC_SDA_PIN;
     }
     else
@@ -178,6 +182,7 @@ void IICSendNotAck(iic_bus_t *bus)
 
 /**
   * @brief IIC发送一个字节
+  * 把一个字节的 8 个 bit 依次送到 SDA 上
   * @param cSendByte 需要发送的字节
   * @retval None
   */
@@ -201,6 +206,7 @@ void IICSendByte(iic_bus_t *bus,unsigned char cSendByte)
 
 /**
   * @brief IIC接收一个字节
+  * 从 SDA 上依次接收 8 个 bit，并拼成一个字节
   * @param None
   * @retval 接收到的字节
   */
@@ -223,6 +229,7 @@ unsigned char IICReceiveByte(iic_bus_t *bus)
     return cR_Byte;
 }
 
+//在某个器件的某个寄存器里写入一个字节
 uint8_t IIC_Write_One_Byte(iic_bus_t *bus, uint8_t daddr,uint8_t reg,uint8_t data)
 {				   	  	    																 
   IICStart(bus);  
@@ -242,6 +249,7 @@ uint8_t IIC_Write_One_Byte(iic_bus_t *bus, uint8_t daddr,uint8_t reg,uint8_t dat
 	return 0;
 }
 
+//从某个寄存器开始，连续写入多个字节
 uint8_t IIC_Write_Multi_Byte(iic_bus_t *bus, uint8_t daddr,uint8_t reg,uint8_t length,uint8_t buff[])
 {			
 	unsigned char i;	
@@ -265,6 +273,13 @@ uint8_t IIC_Write_Multi_Byte(iic_bus_t *bus, uint8_t daddr,uint8_t reg,uint8_t l
 	return 0;
 } 
 
+/**
+  * @brief 从IIC器件的某个寄存器读取一个字节
+  * @param bus IIC总线结构体指针
+  * @param daddr 器件地址
+  * @param reg 寄存器地址
+  * @retval 读取到的字节
+  */
 unsigned char IIC_Read_One_Byte(iic_bus_t *bus, uint8_t daddr,uint8_t reg)
 {
 	unsigned char dat;
@@ -283,7 +298,7 @@ unsigned char IIC_Read_One_Byte(iic_bus_t *bus, uint8_t daddr,uint8_t reg)
 	return dat;
 }
 
-
+//从某个寄存器开始，连续读取多个字节
 uint8_t IIC_Read_Multi_Byte(iic_bus_t *bus, uint8_t daddr, uint8_t reg, uint8_t length, uint8_t buff[])
 {
 	unsigned char i;
@@ -312,7 +327,8 @@ uint8_t IIC_Read_Multi_Byte(iic_bus_t *bus, uint8_t daddr, uint8_t reg, uint8_t 
 }
 
 
-//
+//初始化IIC总线
+//把 SDA、SCL 都配置成输出，让总线处于空闲状态
 void IICInit(iic_bus_t *bus)
 {
     GPIO_InitTypeDef GPIO_InitStructure = {0};

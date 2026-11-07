@@ -9,6 +9,17 @@
 
 static LCD_CallbackFunc_t lcd_ready_cb = NULL;
 
+/**
+  * @brief  在矩形区域内逐点填色
+  * @param  xsta ysta 起始坐标（左上角，含）
+  * @param  xend yend 结束坐标（右下角，不含）
+  * @param  color     16 位 RGB565 颜色
+  * @retval None
+  * @note   起始行自动加上 OFFSET_Y；循环是 i<yend、j<xend，
+  *         所以结束坐标是开区间，实际填充 (xend-xsta) x (yend-ysta) 个像素
+  *         颜色是一个字节一个字节用 SPI 阻塞发送的，很慢，只用在上电欢迎页
+  */
+
 /******************************************************************************
       函数说明：在指定区域填充颜色
       入口数据：xsta,ysta   起始坐标
@@ -28,6 +39,16 @@ void LCD_Fill(u16 xsta,u16 ysta,u16 xend,u16 yend,u16 color)
 		}
 	}
 }
+
+/**
+  * @brief  用 DMA 把一整块像素刷到屏幕上（LVGL 用的就是这个）
+  * @param  xsta ysta 起始坐标（含）
+  * @param  xend yend 结束坐标（含）
+  * @param  color_p   像素数据首地址，u16 数组，RGB565
+  * @retval None
+  * @note   结束坐标在这里是闭区间，和 LCD_Fill 的约定不一样；
+  *         函数发完 DMA 立刻返回，真正写屏要等 HAL_SPI_TxCpltCallback 触发
+  */
 
 /******************************************************************************
       函数说明：在指定区域填充颜色
@@ -50,12 +71,27 @@ void LCD_Color_Fill(u16 xsta,u16 ysta,u16 xend,u16 yend,u16 *color_p)
 }
 
 // 设置通知的回调函数
+/**
+  * @brief  注册"本次 DMA 刷屏完成"的回调
+  * @param  cb 回调函数，NULL 表示不通知
+  * @retval None
+  * @note   lv_port_disp.c 用它把 LVGL 的 flush_ready 挂进来
+  */
+
 void LCD_Set_Flush_Complete_Callback(LCD_CallbackFunc_t cb)
 {
 	lcd_ready_cb = cb;
 }
 
 // DMA 传输完成中断回调
+/**
+  * @brief  HAL 的 SPI 发送完成中断回调
+  * @param  hspi 触发回调的 SPI 句柄
+  * @retval None
+  * @note   先死等 BSY 清零，确保最后一个字节真的移出去了，再通知上层；
+  *         在中断里忙等是坏习惯，但 ST7789 没有别的握手信号可用
+  */
+
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
 	if (hspi->Instance == SPI1)
@@ -69,6 +105,14 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 	}
 }
 
+/**
+  * @brief  画一个点
+  * @param  x y 坐标
+  * @param  color 颜色
+  * @retval None
+  * @note   不加 OFFSET_Y，和 LCD_Fill / LCD_Color_Fill 不是同一套坐标系
+  */
+
 /******************************************************************************
       函数说明：在指定位置画点
       入口数据：x,y 画点坐标
@@ -81,6 +125,16 @@ void LCD_DrawPoint(u16 x,u16 y,u16 color)
 	LCD_WR_DATA(color);
 }
 
+
+/**
+  * @brief  任意两点之间画直线（Bresenham 算法）
+  * @param  x1 y1 起点
+  * @param  x2 y2 终点
+  * @param  color 颜色
+  * @retval None
+  * @note   用一个累加误差 xerr/yerr 决定什么时候挪一格，全程只有整数运算；
+  *         每画一个点都要重设一次窗口并单独写 2 字节，速度很慢
+  */
 
 /******************************************************************************
       函数说明：画线
@@ -125,6 +179,14 @@ void LCD_DrawLine(u16 x1,u16 y1,u16 x2,u16 y2,u16 color)
 }
 
 
+/**
+  * @brief  画矩形边框（四条线，不填充）
+  * @param  x1 y1 左上角
+  * @param  x2 y2 右下角
+  * @param  color 颜色
+  * @retval None
+  */
+
 /******************************************************************************
       函数说明：画矩形
       入口数据：x1,y1   起始坐标
@@ -140,6 +202,16 @@ void LCD_DrawRectangle(u16 x1, u16 y1, u16 x2, u16 y2,u16 color)
 	LCD_DrawLine(x2,y1,x2,y2,color);
 }
 
+
+/**
+  * @brief  画空心圆
+  * @param  x0 y0 圆心
+  * @param  r     半径
+  * @param  color 颜色
+  * @retval None
+  * @note   每轮只算出第一个八分圆上的点，再按 x/y 互换和正负对称画出 8 个点；
+  *         所以循环量只有半径的 0.707 倍左右
+  */
 
 /******************************************************************************
       函数说明：画圆
@@ -170,6 +242,18 @@ void Draw_Circle(u16 x0,u16 y0,u8 r,u16 color)
 	}
 }
 
+/**
+  * @brief  显示一串汉字
+  * @param  x y   左上角坐标
+  * @param  s     GBK 编码的汉字串
+  * @param  fc bc 前景色 / 背景色
+  * @param  sizey 字号 12/16/24/32
+  * @param  mode  0 非叠加（带背景色）1 叠加（只画前景点）
+  * @retval None
+  * @note   每次 s 前进 2 个字节，因为 GBK 一个汉字刚好两字节；
+  *         x 前进 sizey，即每个字占 sizey x sizey 的方块
+  */
+
 /******************************************************************************
       函数说明：显示汉字串
       入口数据：x,y显示坐标
@@ -193,6 +277,18 @@ void LCD_ShowChinese(u16 x,u16 y,u8 *s,u16 fc,u16 bc,u8 sizey,u8 mode)
 		x+=sizey;
 	}
 }
+
+/**
+  * @brief  显示单个 12x12 汉字
+  * @param  x y   左上角坐标
+  * @param  s     GBK 汉字（前两字节）
+  * @param  fc bc 前景色 / 背景色
+  * @param  sizey 字号，调用方保证是 12
+  * @param  mode  0 非叠加 1 叠加
+  * @retval None
+  * @note   在 tfont12 表里按两字节编码逐个比对查出点阵；
+  *         非叠加模式整块写满，叠加模式只画有笔画的位置
+  */
 
 /******************************************************************************
       函数说明：显示单个12x12汉字
@@ -252,6 +348,16 @@ void LCD_ShowChinese12x12(u16 x,u16 y,u8 *s,u16 fc,u16 bc,u8 sizey,u8 mode)
 	}
 }
 
+/**
+  * @brief  显示单个 16x16 汉字
+  * @param  x y   左上角坐标
+  * @param  s     GBK 汉字（前两字节）
+  * @param  fc bc 前景色 / 背景色
+  * @param  sizey 字号，调用方保证是 16
+  * @param  mode  0 非叠加 1 叠加
+  * @retval None
+  */
+
 /******************************************************************************
       函数说明：显示单个16x16汉字
       入口数据：x,y显示坐标
@@ -310,6 +416,16 @@ void LCD_ShowChinese16x16(u16 x,u16 y,u8 *s,u16 fc,u16 bc,u8 sizey,u8 mode)
 }
 
 
+/**
+  * @brief  显示单个 24x24 汉字
+  * @param  x y   左上角坐标
+  * @param  s     GBK 汉字（前两字节）
+  * @param  fc bc 前景色 / 背景色
+  * @param  sizey 字号，调用方保证是 24
+  * @param  mode  0 非叠加 1 叠加
+  * @retval None
+  */
+
 /******************************************************************************
       函数说明：显示单个24x24汉字
       入口数据：x,y显示坐标
@@ -366,6 +482,16 @@ void LCD_ShowChinese24x24(u16 x,u16 y,u8 *s,u16 fc,u16 bc,u8 sizey,u8 mode)
 		continue;  //查找到对应点阵字库立即退出，防止多个汉字重复取模带来影响
 	}
 }
+
+/**
+  * @brief  显示单个 32x32 汉字
+  * @param  x y   左上角坐标
+  * @param  s     GBK 汉字（前两字节）
+  * @param  fc bc 前景色 / 背景色
+  * @param  sizey 字号，调用方保证是 32
+  * @param  mode  0 非叠加 1 叠加
+  * @retval None
+  */
 
 /******************************************************************************
       函数说明：显示单个32x32汉字
@@ -425,6 +551,18 @@ void LCD_ShowChinese32x32(u16 x,u16 y,u8 *s,u16 fc,u16 bc,u8 sizey,u8 mode)
 }
 
 
+/**
+  * @brief  显示一个 ASCII 字符
+  * @param  x y   左上角坐标
+  * @param  num   字符，例如 'A'
+  * @param  fc bc 前景色 / 背景色
+  * @param  sizey 字号 12/16/24/32，宽度固定是字号的一半
+  * @param  mode  0 非叠加 1 叠加
+  * @retval None
+  * @note   num-' ' 是把 ASCII 码换算成字库数组的下标，字库里从空格开始存；
+  *         点阵按行扫描，一个字节管 8 个横点
+  */
+
 /******************************************************************************
       函数说明：显示单个字符
       入口数据：x,y显示坐标
@@ -480,6 +618,17 @@ void LCD_ShowChar(u16 x,u16 y,u8 num,u16 fc,u16 bc,u8 sizey,u8 mode)
 }
 
 
+/**
+  * @brief  显示一个以 0 结尾的 ASCII 字符串
+  * @param  x y   左上角坐标
+  * @param  p     字符串
+  * @param  fc bc 前景色 / 背景色
+  * @param  sizey 字号
+  * @param  mode  0 非叠加 1 叠加
+  * @retval None
+  * @note   每画一个字符 x 前进 sizey/2，因为 ASCII 字符宽是字号的一半
+  */
+
 /******************************************************************************
       函数说明：显示字符串
       入口数据：x,y显示坐标
@@ -501,6 +650,14 @@ void LCD_ShowString(u16 x,u16 y,const u8 *p,u16 fc,u16 bc,u8 sizey,u8 mode)
 }
 
 
+/**
+  * @brief  求 m 的 n 次方（整数版 pow）
+  * @param  m 底数
+  * @param  n 指数
+  * @retval m^n
+  * @note   n 是 u8，n-- 到 0 会回绕成 255，所以调用前必须保证 n>0
+  */
+
 /******************************************************************************
       函数说明：显示数字
       入口数据：m底数，n指数
@@ -513,6 +670,18 @@ u32 mypow(u8 m,u8 n)
 	return result;
 }
 
+
+/**
+  * @brief  显示固定位数的整数，前面用空格补齐
+  * @param  x y   左上角坐标
+  * @param  num   要显示的整数
+  * @param  len   总位数
+  * @param  fc bc 前景色 / 背景色
+  * @param  sizey 字号
+  * @retval None
+  * @note   enshow 标志实现"去掉前导零"：遇到第一个非零数字之前都画空格；
+  *         但 len-1 这一位无论如何都会画出来，所以 0 也能显示成 "0"
+  */
 
 /******************************************************************************
       函数说明：显示整数变量
@@ -546,6 +715,18 @@ void LCD_ShowIntNum(u16 x,u16 y,u16 num,u8 len,u16 fc,u16 bc,u8 sizey)
 }
 
 
+/**
+  * @brief  显示带两位小数的浮点数
+  * @param  x y   左上角坐标
+  * @param  num   要显示的浮点数
+  * @param  len   总位数（含小数点）
+  * @param  fc bc 前景色 / 背景色
+  * @param  sizey 字号
+  * @retval None
+  * @note   num*100 转成整数再逐位取数字，小数部分到 len-2 位时插入小数点并把 len 加一；
+  *         所以 len 必须是 >=3 的奇数，否则小数点位置会错
+  */
+
 /******************************************************************************
       函数说明：显示两位小数变量
       入口数据：x,y显示坐标
@@ -575,6 +756,16 @@ void LCD_ShowFloatNum1(u16 x,u16 y,float num,u8 len,u16 fc,u16 bc,u8 sizey)
 	}
 }
 
+
+/**
+  * @brief  显示一张 RGB565 图片
+  * @param  x y        左上角坐标
+  * @param  length     宽（像素）
+  * @param  width      高（像素）
+  * @param  pic        图片数组，每像素两字节，高字节在前
+  * @retval None
+  * @note   逐字节用 LCD_WR_DATA8 发送，没有用 DMA，大图会明显可见刷屏过程
+  */
 
 /******************************************************************************
       函数说明：显示图片

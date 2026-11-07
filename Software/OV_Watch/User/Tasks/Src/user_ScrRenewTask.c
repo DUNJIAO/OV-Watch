@@ -22,6 +22,12 @@ extern osMessageQueueId_t Key_MessageQueue;
   * @brief  Screen renew task
   * @param  argument: Not used
   * @retval None
+  * @note   这是 KeyTask 的消费者：KeyTask 每 1 ms 扫键并投递，本任务每 10 ms 取一次。
+  *         取队列超时填 0（不阻塞），循环末尾 osDelay(10)，所以按键响应延迟最多约 10 ms。
+  *         KEY1 -> Page_Back() 退一页；退完后若落在主菜单 ui_MenuPage，
+  *                 关掉 EM7028 心率与 LSM303 地磁（省电，再进测量页才会重新打开）
+  *         KEY2 -> Page_Back_Bottom() 直接回首页，必然离开测量页，故无条件关这两个传感器
+  *         注意：先 Page_Back() 再取 CurrentPage，判断的是【退完之后】的页面
   */
 void ScrRenewTask(void *argument)
 {

@@ -22,7 +22,12 @@
   * @param  argument: Not used
   * @retval None
   * @note   阻塞在 HardIntEventHandle 的 HARDINT_EVENT_CHARG 上（osWaitForever），
-  *         平时完全不占 CPU，靠充电检测脚的 EXTI 中断置标志来唤醒。
+  *         平时完全不占 CPU。标志位由两处置位：
+  *           a) PA2（CHARGE_PIN）双边沿 EXTI2 中断，见 stm32f4xx_it.c:277，
+  *              插拔充电器都触发；NVIC 优先级 5，满足 FreeRTOS 的
+  *              configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 要求，可在 ISR 里调 osEventFlagsSet
+  *           b) IdleEnterTask 从 STOP 唤醒时主动查一次 ChargeCheck() 再补发，
+  *              见 user_RunModeTasks.c:187
   *         这是"中断只置标志、任务做实事"的典型写法。
   *         醒来先往 IdleBreak_MessageQueue 投一条空消息，让 IdleEnterTask 恢复亮度、
   *         清零闲置计时（插拔充电器算一次用户活动，不能熄屏）。

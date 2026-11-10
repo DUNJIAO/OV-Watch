@@ -15,3 +15,7 @@ study_workstation/tools/SDL2-devel-*.tar.gz
 # 参考资料（数据手册，体积大，本地保留）
 study_workstation/pdf/
 
+# 自己复刻的工程（CubeMX 生成，暂不纳入版本管理）
+# 以后想纳入管理，删掉下面这行即可
+ZHH_Watch/
+
